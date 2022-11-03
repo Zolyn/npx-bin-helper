@@ -1,8 +1,15 @@
 [package]
 name = "npx_bin_helper"
+authors = ["Yumeoto Zorin <zorin@zorin.icu>"]
+description = "Generate commands that add node_modules/.bin to PATH"
+keywords = ["cli", "npx"]
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+cfg-if = "1.0.0"
+env_logger = "0.9.1"
+log = "0.4.17"
+thiserror = "1.0.37"
