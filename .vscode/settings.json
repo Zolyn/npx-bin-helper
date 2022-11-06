@@ -1,6 +1,8 @@
 {
     "cSpell.words": [
+        "consts",
         "subdir",
-        "thiserror"
+        "thiserror",
+        "xflags"
     ]
 }
