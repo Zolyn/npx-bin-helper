@@ -1,5 +1,4 @@
-use anyhow::Context;
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use crate::flags;
 use crate::gen_command;
@@ -20,15 +19,15 @@ pub fn run() -> Result<()> {
         }
     };
 
-    if let Some(shell) = app.shell {
-        let res = shells::shell_from_os_string(shell)
+    let result = if let Some(shell) = app.shell {
+        shells::shell_from_os_string(shell)
             .context("Failed to parse shell type")?
-            .gen_setup_command();
-        print!("{}", res)
+            .gen_setup_command()
     } else {
-        let res = gen_command::gen_command().context("Failed to generate command")?;
-        print!("{}", res)
-    }
+        gen_command::gen_command().context("Failed to generate command")?
+    };
+
+    print!("{}", result);
 
     Ok(())
 }

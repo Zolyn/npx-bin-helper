@@ -143,37 +143,12 @@ pub fn gen_command() -> Result<String> {
         bin_dirs_iter.next();
     }
 
-    // loop {
-    //     let next = bin_dirs_iter.peek();
-
-    //     debug!("Peek result: {:?}", next);
-
-    //     if let Some(v) = next {
-    //         let striped_path = strip_bin_path(v)?;
-
-    //         debug!("Striped path: {}", striped_path);
-
-    //         // Use "truncated" bin dirs directly if it's already in there
-    //         if new_bin_dir == *v {
-    //             debug!("Use bin dirs directly");
-    //             use_bin_dirs_only = true;
-    //             break;
-    //         } else if new_bin_dir.starts_with(striped_path) {
-    //             debug!("Preserve parent dir(s)");
-    //             break;
-    //         }
-    //     } else {
-    //         break;
-    //     }
-
-    //     bin_dirs_iter.next();
-    // }
-
     let bin_dirs = bin_dirs_iter.collect::<Vec<_>>().join(ENV_SEPARATOR_STR);
 
     debug!("Filtered bin_dirs: {}", bin_dirs);
 
     let result = if !bin_dirs.is_empty() {
+        debug!("Reuse bin dirs");
         if use_bin_dirs_only {
             format_command(&bin_dirs, &striped_path)
         } else {
@@ -188,6 +163,7 @@ pub fn gen_command() -> Result<String> {
             )
         }
     } else {
+        debug!("Use new bin dir only");
         format_command(new_bin_dir, &striped_path)
     };
 
