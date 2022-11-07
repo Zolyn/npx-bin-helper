@@ -2,6 +2,8 @@ use std::ffi::OsString;
 
 xflags::xflags! {
     cmd app {
-        optional -s, --shell type: OsString
+        default cmd env {}
+        cmd setup {}
+        required -s, --shell type: OsString
     }
 }

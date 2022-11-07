@@ -1,7 +1,8 @@
 use anyhow::{Context, Result};
 
+use crate::commands::{env, setup};
 use crate::flags;
-use crate::gen_command;
+use crate::flags::AppCmd;
 use crate::shells;
 
 pub fn run() -> Result<()> {
@@ -19,12 +20,12 @@ pub fn run() -> Result<()> {
         }
     };
 
-    let result = if let Some(shell) = app.shell {
-        shells::shell_from_os_string(shell)
-            .context("Failed to parse shell type")?
-            .gen_setup_command()
+    let shell = shells::parse_shell_type(app.shell).context("Failed to parse shell type")?;
+
+    let result = if let AppCmd::Setup(_) = app.subcommand {
+        setup::create_setup(shell).gen_setup_script()
     } else {
-        gen_command::gen_command().context("Failed to generate command")?
+        env::gen_env_settings(shell).context("Failed to generate command")?
     };
 
     print!("{}", result);

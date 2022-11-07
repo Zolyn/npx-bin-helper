@@ -1,8 +1,8 @@
 use std::process;
 
-mod error_consts;
+mod commands;
+mod consts;
 mod flags;
-mod gen_command;
 mod run;
 mod shells;
 

@@ -1,11 +1,8 @@
 use anyhow::{anyhow, Context, Ok, Result};
 use log::debug;
-use std::{
-    env::{self, VarError},
-    path::Path,
-};
+use std::{env, path::Path};
 
-use crate::error_consts::NOT_UNICODE_ERR;
+use crate::consts::NOT_UNICODE_ERR;
 
 cfg_if::cfg_if! {
     if #[cfg(windows)] {
@@ -17,19 +14,19 @@ cfg_if::cfg_if! {
     }
 }
 
-pub const ENV_NAME: &str = "_NPX_BIN";
-
-pub fn format_command(bin: &str, path: &str) -> String {
-    format!(
-        "export {name}={bin};export PATH=${name}{sep}{path}",
-        name = ENV_NAME,
-        sep = ENV_SEPARATOR,
-        bin = bin,
-        path = path
-    )
+#[derive(Debug)]
+pub struct EnvironmentSettings {
+    pub bin: String,
+    pub path: String,
 }
 
-pub fn strip_bin_path(v: &str) -> Result<&str> {
+impl EnvironmentSettings {
+    fn new(bin: String, path: String) -> Self {
+        Self { bin, path }
+    }
+}
+
+fn strip_bin_path(v: &str) -> Result<&str> {
     // Note: Only ParsePathError will be returned
     Path::new(v)
         .ancestors()
@@ -39,25 +36,7 @@ pub fn strip_bin_path(v: &str) -> Result<&str> {
         .ok_or_else(|| anyhow!(NOT_UNICODE_ERR))
 }
 
-pub fn gen_command() -> Result<String> {
-    let env_npx_bin = {
-        let result = env::var(ENV_NAME);
-
-        if let Err(VarError::NotUnicode(_)) = result {
-            return Err(anyhow!(NOT_UNICODE_ERR))
-                .context("Cannot get environment variable _NPX_BIN");
-        };
-
-        // Return an empty string if env var does not exist
-        result.unwrap_or_default()
-    };
-
-    debug!("_NPX_BIN: {}", env_npx_bin);
-
-    let env_path = env::var("PATH").context("Cannot get environment variable PATH")?;
-
-    debug!("PATH: {}", env_path);
-
+pub fn gen_env_settings(bin: String, path: String) -> Result<Option<EnvironmentSettings>> {
     let mut has_node_modules = false;
 
     let bin_dir_buf = {
@@ -76,36 +55,37 @@ pub fn gen_command() -> Result<String> {
     let new_bin_dir = bin_dir_buf
         .to_str()
         .ok_or_else(|| anyhow!(NOT_UNICODE_ERR))
-        .context("Failed to generate bin dir")?;
+        .context("Failed to generate bin dir")?
+        .to_string();
 
     debug!("New bin dir: {}", new_bin_dir);
 
-    if env_npx_bin.is_empty() {
+    if bin.is_empty() {
         debug!("_NPX_BIN is empty");
         if has_node_modules {
             debug!("has node_modules, return command which including unstriped path directly");
-            let result = format_command(new_bin_dir, &env_path);
-            debug!("Generated command: {}", result);
-            return Ok(result);
+            let result = EnvironmentSettings::new(new_bin_dir, path);
+            debug!("Generated settings: {:?}", result);
+            return Ok(Some(result));
         } else {
             debug!("No node_modules, do nothing");
-            return Ok(String::new());
+            return Ok(None);
         }
     }
 
-    let bin_dirs: Vec<_> = env_npx_bin.split(ENV_SEPARATOR).collect();
+    let bin_dirs: Vec<_> = bin.split(ENV_SEPARATOR).collect();
 
     let first_bin_dir = bin_dirs.first().unwrap();
 
     // Do nothing if bin dir has already added
     if *first_bin_dir == new_bin_dir {
         debug!("Already added, do nothing");
-        return Ok(String::new());
+        return Ok(None);
     }
 
     debug!("Raw bin_dirs: {:?}", bin_dirs);
 
-    let striped_path = env_path
+    let striped_path = path
         .split(ENV_SEPARATOR)
         .filter(|e| !bin_dirs.contains(e))
         .collect::<Vec<_>>()
@@ -116,7 +96,7 @@ pub fn gen_command() -> Result<String> {
     // Reset PATH if current directory does not contain node_modules
     if !has_node_modules {
         debug!("_NPX_BIN is not empty but no node_modules found, reset PATH");
-        return Ok(format_command("", &striped_path));
+        return Ok(Some(EnvironmentSettings::new("".into(), striped_path)));
     }
 
     let mut bin_dirs_iter = bin_dirs.into_iter().peekable();
@@ -150,24 +130,24 @@ pub fn gen_command() -> Result<String> {
     let result = if !bin_dirs.is_empty() {
         debug!("Reuse bin dirs");
         if use_bin_dirs_only {
-            format_command(&bin_dirs, &striped_path)
+            EnvironmentSettings::new(bin_dirs, striped_path)
         } else {
-            format_command(
-                &format!(
+            EnvironmentSettings::new(
+                format!(
                     "{bin}{sep}{old}",
                     bin = new_bin_dir,
                     sep = ENV_SEPARATOR,
                     old = bin_dirs
                 ),
-                &striped_path,
+                striped_path,
             )
         }
     } else {
         debug!("Use new bin dir only");
-        format_command(new_bin_dir, &striped_path)
+        EnvironmentSettings::new(new_bin_dir, striped_path)
     };
 
-    debug!("Generated command: {}", result);
+    debug!("Generated settings: {:?}", result);
 
-    Ok(result)
+    Ok(Some(result))
 }
