@@ -20,15 +20,13 @@ pub fn run() -> Result<()> {
         }
     };
 
-    let shell = shells::parse_shell_type(app.shell).context("Failed to parse shell type")?;
+    let shell = shells::resolve_shell(app.shell).context("Failed to resolve shell type")?;
 
-    let result = if let AppCmd::Setup(_) = app.subcommand {
-        setup::create_setup(shell).gen_setup_script()
+    if let AppCmd::Setup(_) = app.subcommand {
+        setup::call(shell)
     } else {
-        env::gen_env_settings(shell).context("Failed to generate command")?
+        env::call(shell)?
     };
-
-    print!("{}", result);
 
     Ok(())
 }
