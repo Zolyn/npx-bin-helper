@@ -10,6 +10,22 @@ use crate::{
     shells::Shell,
 };
 
+#[cfg(test)]
+#[path = "./tests/generate.rs"]
+mod tests;
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum GenerateStatus {
+    EmptyVarHasModules,
+    EmptyVarNoModules,
+    AlreadyAdded,
+    KeepVar,
+    ResetPath,
+    ConcatDirs,
+    UseOldDirsOnly,
+    UseNewDirOnly,
+}
+
 #[derive(Debug)]
 pub struct EnvironmentSettings {
     pub bin: String,
@@ -32,11 +48,16 @@ fn strip_bin_path(v: &str) -> Result<&str> {
         .ok_or_else(|| anyhow!(NOT_UNICODE_ERR))
 }
 
-fn _gen_env_settings(
+fn gen_env_settings_by(
     shell: &dyn Shell,
     envs: (String, String, PathBuf),
-) -> Result<Option<EnvironmentSettings>> {
+) -> Result<(Option<EnvironmentSettings>, GenerateStatus)> {
     let (bin, path, mut cwd) = envs;
+
+    if cfg!(test) {
+        debug!("Bin: {}", bin);
+        debug!("PATH: {}", path);
+    }
 
     let env_separator = shell.env_separator();
     let env_separator_str = shell.env_separator_str();
@@ -68,12 +89,14 @@ fn _gen_env_settings(
             debug!("has node_modules, return command which including unstriped path directly");
             let result = EnvironmentSettings::new(new_bin_dir, path);
             debug!("Generated settings: {:?}", result);
-            return Ok(Some(result));
+            return Ok((Some(result), GenerateStatus::EmptyVarHasModules));
         } else {
             debug!("No node_modules, do nothing");
-            return Ok(None);
+            return Ok((None, GenerateStatus::EmptyVarNoModules));
         }
     }
+
+    debug!("_NPX_BIN is not empty");
 
     let bin_dirs = bin.split(env_separator).collect::<Vec<_>>();
 
@@ -82,7 +105,7 @@ fn _gen_env_settings(
     // Do nothing if bin dir has already added
     if first_bin_dir == new_bin_dir {
         debug!("Already added, do nothing");
-        return Ok(None);
+        return Ok((None, GenerateStatus::AlreadyAdded));
     }
 
     debug!("Raw bin_dirs: {:?}", bin_dirs);
@@ -95,10 +118,22 @@ fn _gen_env_settings(
 
     debug!("Striped PATH env: {}", striped_path);
 
-    // Reset PATH if current directory does not contain node_modules
     if !has_node_modules {
-        debug!("_NPX_BIN is not empty but no node_modules found, reset PATH");
-        return Ok(Some(EnvironmentSettings::new("".into(), striped_path)));
+        let striped_bin_path = strip_bin_path(first_bin_dir).context("Failed to strip bin path")?;
+
+        // Keep the environment vars if new bin dir is subdir of the first bin dir
+        if new_bin_dir.starts_with(striped_bin_path) {
+            debug!("New bin dir is subdir, do nothing");
+            return Ok((None, GenerateStatus::KeepVar));
+        }
+        // Reset PATH if current directory does not contain node_modules
+        else {
+            debug!("No node_modules found, reset PATH");
+            return Ok((
+                Some(EnvironmentSettings::new(String::new(), striped_path)),
+                GenerateStatus::ResetPath,
+            ));
+        }
     }
 
     let mut bin_dirs_iter = bin_dirs.into_iter().peekable();
@@ -114,7 +149,7 @@ fn _gen_env_settings(
 
         // Use "truncated" bin dirs directly if it's already in there
         if new_bin_dir == next {
-            debug!("Use bin dirs directly");
+            debug!("Use truncated bin dirs directly");
             use_bin_dirs_only = true;
             break;
         } else if new_bin_dir.starts_with(striped_bin_path) {
@@ -132,26 +167,35 @@ fn _gen_env_settings(
     let result = if !bin_dirs.is_empty() {
         debug!("Reuse bin dirs");
         if use_bin_dirs_only {
-            EnvironmentSettings::new(bin_dirs, striped_path)
+            (
+                Some(EnvironmentSettings::new(bin_dirs, striped_path)),
+                GenerateStatus::UseOldDirsOnly,
+            )
         } else {
-            EnvironmentSettings::new(
-                format!(
-                    "{bin}{sep}{old}",
-                    bin = new_bin_dir,
-                    sep = env_separator,
-                    old = bin_dirs
-                ),
-                striped_path,
+            (
+                Some(EnvironmentSettings::new(
+                    format!(
+                        "{bin}{sep}{old}",
+                        bin = new_bin_dir,
+                        sep = env_separator,
+                        old = bin_dirs
+                    ),
+                    striped_path,
+                )),
+                GenerateStatus::ConcatDirs,
             )
         }
     } else {
         debug!("Use new bin dir only");
-        EnvironmentSettings::new(new_bin_dir, striped_path)
+        (
+            Some(EnvironmentSettings::new(new_bin_dir, striped_path)),
+            GenerateStatus::UseNewDirOnly,
+        )
     };
 
     debug!("Generated settings: {:?}", result);
 
-    Ok(Some(result))
+    Ok(result)
 }
 
 pub fn gen_env_settings(shell: &dyn Shell) -> Result<Option<EnvironmentSettings>> {
@@ -175,5 +219,7 @@ pub fn gen_env_settings(shell: &dyn Shell) -> Result<Option<EnvironmentSettings>
 
     let cwd = env::current_dir().context("Cannot get current directory")?;
 
-    _gen_env_settings(shell, (env_npx_bin, env_path, cwd))
+    let res = gen_env_settings_by(shell, (env_npx_bin, env_path, cwd))?;
+
+    Ok(res.0)
 }
