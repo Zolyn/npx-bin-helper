@@ -17,3 +17,9 @@ xflags = "0.3.1"
 
 [profile.release]
 strip = true
+
+[dev-dependencies]
+env_logger = "0.9.1"
+rstest = "0.15.0"
+serial_test = "0.9.0"
+tempfile = "3.3.0"
