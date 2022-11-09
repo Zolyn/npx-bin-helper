@@ -3,7 +3,7 @@ use std::ffi::OsString;
 
 use crate::consts::NOT_UNICODE_ERR;
 
-use self::{bash::Bash, powershell::PowerShell, zsh::Zsh};
+pub use self::{bash::Bash, powershell::PowerShell, zsh::Zsh};
 
 mod bash;
 mod powershell;

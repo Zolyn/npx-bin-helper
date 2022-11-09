@@ -11,7 +11,7 @@ pub fn call(shell: Box<dyn Shell>) -> Result<()> {
         return Ok(())
     };
 
-    let EnvironmentSettings { bin, path } = env_settings;
+    let EnvironmentSettings { bin, path, .. } = env_settings;
 
     let res = format!(
         "{};{}",

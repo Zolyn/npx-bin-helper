@@ -6,7 +6,7 @@ use crate::flags::AppCmd;
 use crate::shells;
 
 pub fn run() -> Result<()> {
-    env_logger::init();
+    env_logger::builder().format_timestamp(None).init();
 
     let app = match flags::App::from_env() {
         Ok(v) => v,
