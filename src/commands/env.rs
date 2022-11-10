@@ -7,19 +7,15 @@ use crate::{
 };
 
 pub fn call(shell: Box<dyn Shell>) -> Result<()> {
-    let Some(env_settings) = generate::gen_env_settings(&*shell).context("Cannot generate environment settings")? else {
-        return Ok(())
-    };
-
-    let EnvironmentSettings { bin, path, .. } = env_settings;
-
-    let res = format!(
-        "{};{}",
-        shell.set_env(ENV_NAME, &bin),
-        shell.set_env("PATH", &path)
-    );
-
-    print!("{}", res);
+    if let Some(EnvironmentSettings { bin, path }) = generate::gen_env_settings(&*shell).context("Cannot generate environment settings")? {
+        let res = format!(
+            "{};{}",
+            shell.set_env(ENV_NAME, &bin),
+            shell.set_env("PATH", &path)
+        );
+    
+        print!("{}", res);
+    }
 
     Ok(())
 }
