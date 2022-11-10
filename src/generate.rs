@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Ok, Result};
 use log::debug;
+use path_slash::PathBufExt;
 use std::{
     env::{self, VarError},
     path::{Path, PathBuf},
@@ -72,22 +73,44 @@ fn gen_env_settings_by(
         }
 
         cwd.push(".bin");
+
         cwd
     };
 
-    let new_bin_dir = bin_dir_buf
-        .to_str()
-        .ok_or_else(|| anyhow!(NOT_UNICODE_ERR))
-        .context("Failed to generate bin dir")?
-        .to_string();
+    let new_bin_dir = if cfg!(windows) && shell.name() != "powershell" {
+        debug!("Convert path to slash path");
+        bin_dir_buf
+            .to_slash()
+            .ok_or_else(|| anyhow!(NOT_UNICODE_ERR))?
+            .to_string()
+    } else {
+        bin_dir_buf
+            .to_str()
+            .ok_or_else(|| anyhow!(NOT_UNICODE_ERR))
+            .context("Failed to generate bin dir")?
+            .to_string()
+    };
 
     debug!("New bin dir: {}", new_bin_dir);
 
     let split_paths = env::split_paths(&path).collect::<Vec<_>>();
-    let split_paths = split_paths
-        .iter()
-        .map(|e| e.to_str().unwrap())
-        .collect::<Vec<_>>();
+    let converted_split_paths;
+
+    let split_paths = if cfg!(windows) && shell.name() != "powershell" {
+        converted_split_paths = split_paths
+            .iter()
+            .map(|e| e.to_slash().unwrap())
+            .collect::<Vec<_>>();
+        converted_split_paths
+            .iter()
+            .map(|e| e.as_ref())
+            .collect::<Vec<_>>()
+    } else {
+        split_paths
+            .iter()
+            .map(|e| e.to_str().unwrap())
+            .collect::<Vec<_>>()
+    };
 
     if bin.is_empty() {
         debug!("_NPX_BIN is empty");
