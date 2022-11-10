@@ -2,13 +2,13 @@ use anyhow::{Context, Result};
 
 use crate::commands::{env, setup};
 use crate::flags;
-use crate::flags::AppCmd;
+use crate::flags::NpxBinHelperCmd;
 use crate::shells;
 
 pub fn run() -> Result<()> {
     env_logger::builder().format_timestamp(None).init();
 
-    let app = match flags::App::from_env() {
+    let app = match flags::NpxBinHelper::from_env() {
         Ok(v) => v,
         Err(e) => {
             if e.is_help() {
@@ -22,7 +22,7 @@ pub fn run() -> Result<()> {
 
     let shell = shells::resolve_shell(app.shell).context("Failed to resolve shell type")?;
 
-    if let AppCmd::Setup(_) = app.subcommand {
+    if let NpxBinHelperCmd::Setup(_) = app.subcommand {
         setup::call(shell)
     } else {
         env::call(shell)?

@@ -1,5 +1,5 @@
 [package]
-name = "npx_bin_helper"
+name = "npx-bin-helper"
 authors = ["Yumeoto Zorin <zorin@zorin.icu>"]
 description = "Generate commands that add node_modules/.bin to PATH"
 keywords = ["cli", "npx"]
