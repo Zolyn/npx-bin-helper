@@ -1,8 +1,12 @@
 {
     "cSpell.words": [
+        "chpwd",
         "consts",
         "pwsh",
+        "rstest",
         "subdir",
+        "tempdir",
+        "tempfile",
         "xflags"
     ]
 }
