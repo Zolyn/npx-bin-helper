@@ -1,7 +1,4 @@
-use std::{
-    fs,
-    path::PathBuf,
-};
+use std::{fs, path::PathBuf};
 
 use anyhow::{anyhow, Ok, Result};
 use rstest::*;
