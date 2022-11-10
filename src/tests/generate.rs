@@ -1,9 +1,9 @@
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
-use anyhow::{anyhow, Context, Ok, Result};
+use anyhow::{anyhow, Ok, Result};
 use rstest::*;
 use serial_test::serial;
 use tempfile::TempDir;
@@ -202,6 +202,33 @@ fn concat_dirs(shell: &BoxedShell, path: String, tmp: Temp) -> Result<()> {
     let status = gen_env_settings(shell, envs)?.1;
 
     assert_eq!(status, GenerateStatus::ConcatDirs);
+    tmp.close()?;
+
+    Ok(())
+}
+
+#[rstest]
+#[serial]
+fn use_new_dir_only(shell: &BoxedShell, path: String, tmp: Temp) -> Result<()> {
+    let shell = shell.as_ref();
+    let tmp = tmp?;
+    let tmp_dir = tmp.path();
+
+    fs::create_dir(tmp_dir.join("node_modules"))?;
+
+    let mut env_npx_bin = tmp_dir.join("foo");
+    env_npx_bin.push("node_modules");
+    env_npx_bin.push(".bin");
+
+    let env_npx_bin = env_npx_bin
+        .to_str()
+        .ok_or_else(|| anyhow!(NOT_UNICODE_ERR))?
+        .to_string();
+
+    let envs = (env_npx_bin, path, tmp_dir.to_path_buf());
+    let status = gen_env_settings(shell, envs)?.1;
+
+    assert_eq!(status, GenerateStatus::UseNewDirOnly);
     tmp.close()?;
 
     Ok(())
