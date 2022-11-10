@@ -1,22 +1,27 @@
 use super::Shell;
 
-pub struct PowerShell;
+pub struct Fish;
 
-impl Shell for PowerShell {
+impl Shell for Fish {
     fn name(&self) -> &'static str {
-        "powershell"
+        "fish"
     }
     fn env_separator(&self) -> char {
-        ';'
+        ' '
     }
     fn env_separator_str(&self) -> &'static str {
-        ";"
+        " "
     }
     fn set_env(&self, key: &str, value: &str) -> String {
-        format!(r#"$env:{} = "{}""#, key, value)
+        format!("set -gx {} {}", key, value)
     }
     fn gen_setup_script(&self) -> &'static str {
         r#"
+function __npx_bin_helper -v PWD
+    eval (npx-bin-helper -s fish)
+end
+
+__npx_bin_helper
 "#
     }
 }

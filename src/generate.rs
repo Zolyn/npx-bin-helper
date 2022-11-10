@@ -83,11 +83,17 @@ fn gen_env_settings_by(
 
     debug!("New bin dir: {}", new_bin_dir);
 
+    let split_paths = env::split_paths(&path).collect::<Vec<_>>();
+    let split_paths = split_paths
+        .iter()
+        .map(|e| e.to_str().unwrap())
+        .collect::<Vec<_>>();
+
     if bin.is_empty() {
         debug!("_NPX_BIN is empty");
         if has_node_modules {
             debug!("has node_modules, return command which including unstriped path directly");
-            let result = EnvironmentSettings::new(new_bin_dir, path);
+            let result = EnvironmentSettings::new(new_bin_dir, split_paths.join(env_separator_str));
             debug!("Generated settings: {:?}", result);
             return Ok((Some(result), GenerateStatus::EmptyVarHasModules));
         } else {
@@ -98,7 +104,15 @@ fn gen_env_settings_by(
 
     debug!("_NPX_BIN is not empty");
 
-    let bin_dirs = bin.split(env_separator).collect::<Vec<_>>();
+    let split_bin_dirs;
+
+    // It seems that when reading a new variable set by fish (set -gx), the separator is a space (' ') instead of ':'
+    let bin_dirs: Vec<&str> = if shell.name() == "fish" {
+        bin.split(env_separator).collect()
+    } else {
+        split_bin_dirs = env::split_paths(&bin).collect::<Vec<_>>();
+        split_bin_dirs.iter().map(|e| e.to_str().unwrap()).collect()
+    };
 
     let first_bin_dir = *bin_dirs.first().unwrap();
 
@@ -110,8 +124,8 @@ fn gen_env_settings_by(
 
     debug!("Raw bin_dirs: {:?}", bin_dirs);
 
-    let striped_path = path
-        .split(env_separator)
+    let striped_path = split_paths
+        .into_iter()
         .filter(|e| !bin_dirs.contains(e))
         .collect::<Vec<_>>()
         .join(env_separator_str);
