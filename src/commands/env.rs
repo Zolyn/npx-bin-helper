@@ -16,13 +16,8 @@ pub fn call(shell: Box<dyn Shell>) -> Result<()> {
             format!("{}{sep}{}", &bin, &path, sep = shell.env_separator())
         };
 
-        let res = format!(
-            "{};{}",
-            shell.set_env(ENV_NAME, &bin),
-            shell.set_env("PATH", &combined_path)
-        );
-
-        print!("{}", res);
+        println!("{}", shell.set_env(ENV_NAME, &bin));
+        println!("{}", shell.set_env("PATH", &combined_path))
     }
 
     Ok(())

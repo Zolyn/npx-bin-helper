@@ -7,7 +7,6 @@ use crate::{consts::NOT_UNICODE_ERR, shells::Shell};
 /**
  * Forked from: https://github.com/rhysd/path-slash/blob/3cbcbb0e3a88d5bcafb51a685bca5b2cfda03c8f/src/lib.rs#L209
  */
-#[cfg(windows)]
 pub fn to_unix_like_path<P: AsRef<Path>>(path: P) -> Result<String> {
     let path = path.as_ref();
     let mut result = String::from("/");

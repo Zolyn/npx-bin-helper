@@ -11,7 +11,6 @@ use crate::{
     utils::is_git_bash,
 };
 
-#[cfg(windows)]
 use crate::utils::to_unix_like_path;
 
 #[cfg(test)]
