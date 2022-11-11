@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{env::join_paths, fs, path::PathBuf};
 
 use anyhow::{anyhow, Ok, Result};
 use rstest::*;
@@ -166,7 +166,9 @@ fn use_old_dirs_only(shell: &BoxedShell, path: String, tmp: Temp) -> Result<()> 
 
     fs::create_dir(tmp_dir.join("node_modules"))?;
 
-    let env_npx_bin = env_npx_bin_iter.join(shell.env_separator_str());
+    let env_npx_bin = join_paths(env_npx_bin_iter)?
+        .into_string()
+        .map_err(|_| anyhow!(NOT_UNICODE_ERR))?;
     let envs = (env_npx_bin, path, tmp_dir.to_path_buf());
     let status = gen_env_settings(shell, envs)?.1;
 
