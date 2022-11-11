@@ -56,7 +56,7 @@ npx-bin-helper setup -s fish | source
 ### PowerShell
 Add the following to your profile
 ```powershell
-npx-bin-helper setup -s fish | Out-String | Invoke-Expression
+npx-bin-helper setup -s pwsh | Out-String | Invoke-Expression
 ```
 
 ## License
