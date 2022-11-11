@@ -19,7 +19,7 @@ pub trait Shell {
         ":"
     }
     fn set_env(&self, key: &str, value: &str) -> String {
-        format!("export {}={}", key, value)
+        format!(r#"export {}="{}""#, key, value)
     }
     fn gen_setup_script(&self) -> &'static str;
 }

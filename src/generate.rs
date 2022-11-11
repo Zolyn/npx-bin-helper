@@ -1,15 +1,18 @@
 use anyhow::{anyhow, Context, Ok, Result};
 use log::debug;
-use path_slash::PathBufExt;
 use std::{
     env::{self, VarError},
     path::{Path, PathBuf},
 };
 
 use crate::{
-    consts::{ENV_NAME, NOT_UNICODE_ERR},
+    consts::{CONVERT_UNIX_PATH_ERR, ENV_NAME, NOT_UNICODE_ERR},
     shells::Shell,
+    utils::is_git_bash,
 };
+
+#[cfg(windows)]
+use crate::utils::to_unix_like_path;
 
 #[cfg(test)]
 #[path = "./tests/generate.rs"]
@@ -62,6 +65,8 @@ fn gen_env_settings_by(
 
     let env_separator = shell.env_separator();
     let env_separator_str = shell.env_separator_str();
+    let shell_name = shell.name();
+    let is_git_bash = is_git_bash(shell);
     let mut has_node_modules = false;
 
     let bin_dir_buf = {
@@ -77,12 +82,9 @@ fn gen_env_settings_by(
         cwd
     };
 
-    let new_bin_dir = if cfg!(windows) && shell.name() != "powershell" {
-        debug!("Convert path to slash path");
-        bin_dir_buf
-            .to_slash()
-            .ok_or_else(|| anyhow!(NOT_UNICODE_ERR))?
-            .to_string()
+    let new_bin_dir = if is_git_bash {
+        debug!("Convert path to unix-like path");
+        to_unix_like_path(bin_dir_buf).context(CONVERT_UNIX_PATH_ERR)?
     } else {
         bin_dir_buf
             .to_str()
@@ -96,14 +98,15 @@ fn gen_env_settings_by(
     let split_paths = env::split_paths(&path).collect::<Vec<_>>();
     let converted_split_paths;
 
-    let split_paths = if cfg!(windows) && shell.name() != "powershell" {
+    let split_paths = if is_git_bash {
         converted_split_paths = split_paths
             .iter()
-            .map(|e| e.to_slash().unwrap())
-            .collect::<Vec<_>>();
+            .map(to_unix_like_path)
+            .collect::<Result<Vec<_>>>()
+            .context(CONVERT_UNIX_PATH_ERR)?;
         converted_split_paths
             .iter()
-            .map(|e| e.as_ref())
+            .map(|e| e.as_str())
             .collect::<Vec<_>>()
     } else {
         split_paths
@@ -117,7 +120,6 @@ fn gen_env_settings_by(
         if has_node_modules {
             debug!("has node_modules, return command which including unstriped path directly");
             let result = EnvironmentSettings::new(new_bin_dir, split_paths.join(env_separator_str));
-            debug!("Generated settings: {:?}", result);
             return Ok((Some(result), GenerateStatus::EmptyVarHasModules));
         } else {
             debug!("No node_modules, do nothing");
@@ -128,13 +130,25 @@ fn gen_env_settings_by(
     debug!("_NPX_BIN is not empty");
 
     let split_bin_dirs;
+    let converted_bin_dirs;
 
     // It seems that when reading a new variable set by fish (set -gx), the separator is a space (' ') instead of ':'
-    let bin_dirs: Vec<&str> = if shell.name() == "fish" {
+    let bin_dirs: Vec<&str> = if shell_name == "fish" {
         bin.split(env_separator).collect()
     } else {
         split_bin_dirs = env::split_paths(&bin).collect::<Vec<_>>();
         split_bin_dirs.iter().map(|e| e.to_str().unwrap()).collect()
+    };
+
+    let bin_dirs: Vec<&str> = if is_git_bash {
+        converted_bin_dirs = bin_dirs
+            .into_iter()
+            .map(to_unix_like_path)
+            .collect::<Result<Vec<_>>>()
+            .context(CONVERT_UNIX_PATH_ERR)?;
+        converted_bin_dirs.iter().map(|e| e.as_str()).collect()
+    } else {
+        bin_dirs
     };
 
     let first_bin_dir = *bin_dirs.first().unwrap();
@@ -230,8 +244,6 @@ fn gen_env_settings_by(
         )
     };
 
-    debug!("Generated settings: {:?}", result);
-
     Ok(result)
 }
 
@@ -257,6 +269,8 @@ pub fn gen_env_settings(shell: &dyn Shell) -> Result<Option<EnvironmentSettings>
     let cwd = env::current_dir().context("Cannot get current directory")?;
 
     let res = gen_env_settings_by(shell, (env_npx_bin, env_path, cwd))?;
+
+    debug!("Generated settings: {:?}", res);
 
     Ok(res.0)
 }

@@ -7,6 +7,7 @@ mod flags;
 mod generate;
 mod run;
 mod shells;
+mod utils;
 
 fn main() {
     run::run().unwrap_or_else(|e| {
