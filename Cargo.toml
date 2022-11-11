@@ -2,7 +2,11 @@
 name = "npx-bin-helper"
 authors = ["Yumeoto Zorin <zorin@zorin.icu>"]
 description = "Generate commands that add node_modules/.bin to PATH"
+homepage = "https://github.com/Zolyn/npx-bin-helper"
+repository = "https://github.com/Zolyn/npx-bin-helper"
+license = "MIT"
 keywords = ["cli", "npx"]
+categories = ["command-line-utilities"]
 version = "0.1.0"
 edition = "2021"
 
