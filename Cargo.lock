@@ -248,7 +248,6 @@ name = "npx-bin-helper"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cfg-if",
  "env_logger",
  "log",
  "rstest",
