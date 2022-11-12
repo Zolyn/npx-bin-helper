@@ -20,7 +20,7 @@ Currently npx-bin-helper supports the following shells:
 - `bash` (Including Git Bash on Windows)
 - `zsh`
 - `fish`
-- `powershell`
+- `powershell` (Windows, MacOS, Linux)
 
 For example:
 ```bash
