@@ -6,11 +6,21 @@ impl Shell for PowerShell {
     fn name(&self) -> &'static str {
         "powershell"
     }
+    #[cfg(windows)]
     fn env_separator(&self) -> char {
         ';'
     }
+    #[cfg(unix)]
+    fn env_separator(&self) -> char {
+        ':'
+    }
+    #[cfg(windows)]
     fn env_separator_str(&self) -> &'static str {
         ";"
+    }
+    #[cfg(unix)]
+    fn env_separator_str(&self) -> &'static str {
+        ":"
     }
     fn set_env(&self, key: &str, value: &str) -> String {
         format!(r#"$env:{} = "{}""#, key, value)
